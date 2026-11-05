@@ -62,8 +62,7 @@ required and the proxy must only listen on trusted interfaces.)
 | `@deepseek-ai/dsh` | npm, exact `dshVersion` pin |
 | `dsh-superagent` | pinned official commit; `build` clones it, runs `pnpm install --frozen-lockfile && pnpm build`, and caches the build under `<ohmysaHome>/src/<name>-<ref>` |
 | `dsh-magpie-connector`, `dsh-auto-model-routing` | npm |
-| `dsh-cockpit-bridge` | GitHub release tarball |
-| `dsh-cockpit-worktree-open-shim`, `dsh-cockpit-memex-browse-shim` | npm (published from ohmydsh) |
+| `dsh-cockpit-bridge` | GitHub release tarball (cockpit session/approval reporting in the super-agent panel) |
 
 A dependency entry may also be an object, in which case ohmysa builds it from that pinned public
 source:
