@@ -3,3 +3,4 @@ logs/
 runtime/
 profiles/
 *.log
+ohmysa.local.yaml

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import yaml from 'js-yaml'
@@ -18,8 +18,19 @@ const substitute = (value, vars) => {
   return value
 }
 
+const mergeLocal = (base, local) => {
+  // Shallow for scalars/lists, per-key for maps: a local file can re-point one dependency
+  // (e.g. dsh-superagent: link:/path/to/checkout) without repeating the committed manifest.
+  const merged = { ...base, ...local }
+  if (base.deps || local.deps) merged.deps = { ...(base.deps ?? {}), ...(local.deps ?? {}) }
+  return merged
+}
+
 export function loadManifest(repo, overrides = {}) {
-  const raw = yaml.load(readFileSync(path.join(repo, 'ohmysa.yaml'), 'utf8'))
+  const committed = yaml.load(readFileSync(path.join(repo, 'ohmysa.yaml'), 'utf8'))
+  const localFile = path.join(repo, 'ohmysa.local.yaml')
+  const local = existsSync(localFile) ? yaml.load(readFileSync(localFile, 'utf8')) ?? {} : {}
+  const raw = mergeLocal(committed, local)
   const manifest = { ...raw }
   for (const [key, value] of Object.entries(overrides)) if (value !== undefined) manifest[key] = value
   for (const key of ['dshVersion', 'profile', 'port']) if (manifest[key] === undefined) throw new Error(`ohmysa.yaml is missing ${key}`)

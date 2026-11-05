@@ -15,9 +15,10 @@ ohmysaHome: "~/.ohmysa"
 
 # The profile's dependencies (exact specs) and the bundle order DSH loads.
 deps:
+  # Local override for development; the reproducible spec still has to be pinned (fork/release).
   dsh-superagent: "link:/data00/home/prgrmr/opensource/dsh-superagent-prototype"
-  dsh-magpie-connector: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/dsh-magpie-connector"
-  dsh-auto-model-routing: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/dsh-auto-model-routing"
+  dsh-magpie-connector: "0.6.10"   # published on npm
+  dsh-auto-model-routing: "0.6.7"  # published on npm
   "@byted/dsh-traex-bridge": "0.1.16"
   dsh-cockpit-bridge: "https://github.com/prgrmrwy/dsh-cockpit/releases/download/dsh-cockpit-bridge-v0.6.4/dsh-cockpit-bridge-0.6.4.tgz"
   dsh-cockpit-worktree-open-shim: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/cockpit-worktree-open-shim"
