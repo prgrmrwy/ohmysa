@@ -91,17 +91,94 @@ ohmysa import              # from ~/.dsh: .credentials.yaml, Magpie lines, auto-
 ohmysa import --from <dir> --force
 ```
 
-## Moving to another machine
+## Deploying on a new machine
 
-1. clone this repo (manifest + `settings/` snapshot);
-2. `node scripts/bootstrap.mjs && ohmysa build && ohmysa import && ohmysa start`;
-3. `ohmysa apply` to restore the exported settings;
-4. do the operator steps secrets need: sign `gh` in as the agent account and add the Magpie
-   lines (they live under `$DSH_HOME/plugins` and the DSH credentials store).
+### 0. Prerequisites
 
-`ohmysa export` on the old machine writes `settings/settings.json` and `settings/prompts.json`;
-commit them. State (tickets/sessions/DB under `stateDir`) is intentionally not migrated: back it up
-separately if you need continuity.
+- Linux with a systemd user manager, and linger on so the Host survives logout:
+  `loginctl enable-linger "$USER"`.
+- Node >= 22.19 (24 recommended), pnpm, git, `gh`.
+- The super-agent's target repository cloned somewhere (the Executor's `prepare` command makes
+  worktrees from it), e.g. `git clone https://github.com/<owner>/<repo> ~/src/<repo>`.
+
+### 1. Agent GitHub identity (operator step, not in git)
+
+The super-agent must act as its own GitHub account, never the operator's. Create a wrapper that
+gives `gh` a separate config directory and sign the agent account in:
+
+```sh
+mkdir -p ~/.local/bin
+printf '#!/bin/sh\nGH_CONFIG_DIR="$HOME/.config/gh-agent" exec gh "$@"\n' > ~/.local/bin/gh-agent
+chmod +x ~/.local/bin/gh-agent
+gh-agent auth login          # sign in as the agent account
+gh-agent api user --jq .login
+```
+
+### 2. Install and build
+
+```sh
+git clone https://github.com/prgrmrwy/ohmysa ~/opensource/ohmysa && cd ~/opensource/ohmysa
+node scripts/bootstrap.mjs
+ln -s "$PWD/bin/ohmysa" ~/.local/bin/ohmysa
+ohmysa build        # pinned DSH runtime, dsh-superagent built from its pinned commit, profile
+ohmysa doctor
+```
+
+### 3. Credentials and plugin settings (operator step, not in git)
+
+`ohmysa import` copies `.credentials.yaml`, the Magpie lines and the auto-routing config into
+`~/.ohmysa/dsh-home`. Pick the source that exists on this machine:
+
+- this machine already runs a daily DSH: `ohmysa import` (reads `~/.dsh`);
+- otherwise copy those items from the old machine's `~/.ohmysa/dsh-home` (e.g. `scp -r` into a
+  temp directory) and run `ohmysa import --from <that dir>`; delete the temp copy afterwards.
+
+### 4. Choose: carry state over, or start fresh
+
+- **Carry over** (keeps tickets, decisions, threads, settings): on the old machine
+  `ohmysa stop`, then copy its `~/.ohmysa/dsh-home/state/superagent` to the same path here
+  before the first start. `worker-gitconfig` and `worker-bin` are rewritten on every start.
+- **Fresh**: skip this; step 6 restores the settings from `settings/`.
+
+### 5. Start
+
+```sh
+ohmysa start
+ohmysa status       # exit 0; `setup` names what is still missing on a fresh state
+```
+
+### 6. Restore settings (fresh state only)
+
+`settings/settings.json` holds **absolute machine paths**; fix them for this machine first:
+
+- `sources.github.config.cli`: path to `gh-agent`;
+- `executor.prepare`: the target-repository clone path (twice);
+- `sources.github.config.repository` if the target repository differs.
+
+Then `ohmysa apply` and check `ohmysa status` again.
+
+### 7. Panel access
+
+The panel only answers on exactly `http://127.0.0.1:3082`. From the operator machine use
+dsh-cockpit: device → forwards → add a resident forward for port `3082` with *local port = device
+port*, *show as workbench tab*, and this *open-URL command*:
+
+```sh
+ls -t ~/.ohmysa/logs/superagent-*.log | head -1 | xargs grep -ho 'http://127\.0\.0\.1:3082/?token=[A-Za-z0-9_-]*' | tail -1
+```
+
+After a Host restart the token rotates: use *reload* on the tab. Without cockpit, see
+[Panel access](#panel-access-same-origin-fence).
+
+### 8. Keep it watched
+
+Run `ohmysa status` periodically (cron/agent schedule); on exit 1 with the unit inactive, run
+`ohmysa start --no-build` once, otherwise read `ohmysa log`.
+
+### Updating the snapshot
+
+After changing settings in the panel: `ohmysa export`, review the diff (no secrets are written),
+commit and push.
 
 ## Relationship to ohmydsh
 
