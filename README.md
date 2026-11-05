@@ -11,7 +11,7 @@ Secrets are never stored here.
 | --- | --- |
 | `ohmysa.yaml` | the single source of truth: DSH version pin, profile/port/stateDir, bundles+deps, profile patch, settings snapshot paths |
 | `scripts/lib/dsh.mjs` | installs the pinned `@deepseek-ai/dsh` into `~/.ohmysa/runtime` (npm, not npx) and materializes the profile |
-| `scripts/lib/service.mjs` | transient systemd user service: start/stop/restart/status/log; survives daily-Host restarts because its parent is the user manager |
+| `scripts/lib/service.mjs` | systemd user service: `install-service` writes a persistent unit (restart on failure, start at boot); without it, start uses a transient unit. start/stop/restart/status/log |
 | `scripts/lib/settings.mjs` | `export`/`apply` for the deployment's settings via the management API |
 | `settings/` | exported settings/prompts snapshots (no secrets) |
 | `bin/ohmysa` | cross-shell launcher |
@@ -24,6 +24,7 @@ node scripts/bootstrap.mjs          # toolchain check + root dependencies
 ln -s "$PWD/bin/ohmysa" ~/.local/bin/ohmysa   # optional
 ohmysa doctor                       # what is installed / running
 ohmysa build                        # materialize ohmysa.yaml into the DSH profile
+ohmysa install-service              # persistent unit: restart on failure, start at boot
 ohmysa start                        # start the Host (systemd user service)
 ohmysa status                       # exit 0 when running and set up
 ohmysa log -f                       # follow the newest Host log
@@ -143,6 +144,7 @@ ohmysa doctor
 ### 5. Start
 
 ```sh
+ohmysa install-service   # systemd restarts the Host on failure and starts it at boot
 ohmysa start
 ohmysa status       # exit 0; `setup` names what is still missing on a fresh state
 ```
@@ -170,10 +172,13 @@ ls -t ~/.ohmysa/logs/superagent-*.log | head -1 | xargs grep -ho 'http://127\.0\
 After a Host restart the token rotates: use *reload* on the tab. Without cockpit, see
 [Panel access](#panel-access-same-origin-fence).
 
-### 8. Keep it watched
+### 8. Recovery
 
-Run `ohmysa status` periodically (cron/agent schedule); on exit 1 with the unit inactive, run
-`ohmysa start --no-build` once, otherwise read `ohmysa log`.
+With `install-service` and linger, systemd restarts a crashed Host after 35 s (longer than
+dsh-superagent's 30 s state-lock stale window) and starts it at boot; `ohmysa stop` is a
+deliberate stop and is not undone. No external watchdog is needed. Problems that need a person
+(for example the agent's `gh` login expired) show up in the panel's health and in
+`ohmysa status`.
 
 ### Updating the snapshot
 
