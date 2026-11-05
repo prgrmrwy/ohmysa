@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadManifest } from './lib/manifest.mjs'
 import { buildProfile, ensureRuntime, importState, runtimeBin } from './lib/dsh.mjs'
-import { logPath, start, status, stop, unitName } from './lib/service.mjs'
+import { installService, logPath, start, status, stop, uninstallService, unitName } from './lib/service.mjs'
 import { applySettings, exportSettings } from './lib/settings.mjs'
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -14,6 +14,8 @@ const USAGE = `ohmysa — minimal launcher for one dsh-superagent deployment
   ohmysa doctor            check the toolchain and the current deployment
   ohmysa build             materialize ohmysa.yaml into the DSH profile (idempotent)
   ohmysa start [--no-build] start the Host as a transient systemd user service
+  ohmysa install-service   persistent user unit: restart on failure, start at boot (needs linger)
+  ohmysa uninstall-service remove it (stops the Host)
   ohmysa stop              graceful stop (SIGINT to the Host)
   ohmysa restart           stop, build, start
   ohmysa status            unit/health/log summary (exit 0 when healthy)
@@ -63,6 +65,8 @@ const main = async () => {
     case 'doctor': await doctor(); return 0
     case 'build': ensureRuntime(manifest); buildProfile(manifest); return 0
     case 'start': if (!noBuild) buildProfile(manifest); await start(manifest, { repo }); return 0
+    case 'install-service': installService(manifest, { repo }); return 0
+    case 'uninstall-service': uninstallService(manifest); return 0
     case 'stop': await stop(manifest); return 0
     case 'restart': await stop(manifest); if (!noBuild) buildProfile(manifest); await start(manifest, { repo }); return 0
     case 'status': return await status(manifest)
