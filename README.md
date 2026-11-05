@@ -60,10 +60,20 @@ required and the proxy must only listen on trusted interfaces.)
 | Dependency | Source |
 | --- | --- |
 | `@deepseek-ai/dsh` | npm, exact `dshVersion` pin |
-| `dsh-superagent` | TODO: published artifact (npm release or built GitHub-release tarball); local override in `ohmysa.local.yaml` until then |
+| `dsh-superagent` | pinned official commit; `build` clones it, runs `pnpm install --frozen-lockfile && pnpm build`, and caches the build under `<ohmysaHome>/src/<name>-<ref>` |
 | `dsh-magpie-connector`, `dsh-auto-model-routing` | npm |
 | `dsh-cockpit-bridge` | GitHub release tarball |
 | `dsh-cockpit-worktree-open-shim`, `dsh-cockpit-memex-browse-shim` | npm (published from ohmydsh) |
+
+A dependency entry may also be an object, in which case ohmysa builds it from that pinned public
+source:
+
+```yaml
+deps:
+  dsh-superagent:
+    repository: "https://github.com/deepseek-ai/dsh-superagent-prototype.git"
+    ref: "<commit>"
+```
 
 No internal or closed-source registry is required. If a future dependency needs one, set
 `npmrcFrom` in the manifest to a local `.npmrc` and treat it as an operator step.

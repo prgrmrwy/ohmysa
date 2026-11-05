@@ -30,9 +30,50 @@ export function ensureRuntime(manifest) {
   return runtimeBin(manifest)
 }
 
+const pnpmInstall = (manifest, cwd, extra = []) => {
+  let installed = spawnSync('pnpm', ['install', ...extra], { cwd, stdio: 'inherit' })
+  if (installed.status !== 0) {
+    // pnpm may pick a store on the project's filesystem (e.g. /tmp) that is not writable;
+    // retry once with a store this deployment owns.
+    const store = path.join(manifest.ohmysaHome, 'pnpm-store')
+    console.log(`pnpm install failed in ${cwd}; retrying with --store-dir=${store}`)
+    installed = spawnSync('pnpm', ['install', ...extra, `--store-dir=${store}`], { cwd, stdio: 'inherit' })
+  }
+  if (installed.status !== 0) throw new Error(`pnpm install failed in ${cwd}`)
+}
+
+/** Build a dependency from a pinned public source (repository + ref) and return a file: spec for the profile. */
+const ensureSource = (manifest, name, spec) => {
+  const ref = String(spec.ref ?? 'main')
+  const dir = path.join(manifest.ohmysaHome, 'src', `${name}-${ref.slice(0, 12)}`)
+  if (existsSync(path.join(dir, 'lib')) && existsSync(path.join(dir, 'package.json'))) {
+    console.log(`source ${name}@${ref.slice(0, 12)} already built at ${dir}`)
+    return `file:${dir}`
+  }
+  if (!existsSync(path.join(dir, '.git'))) {
+    console.log(`cloning ${spec.repository} at ${ref.slice(0, 12)} -> ${dir}`)
+    mkdirSync(path.dirname(dir), { recursive: true })
+    run('git', ['clone', '--filter=blob:none', spec.repository, dir], manifest.ohmysaHome)
+  }
+  run('git', ['checkout', '--detach', ref], dir)
+  console.log(`installing and building ${name}@${ref.slice(0, 12)} (pinned source)`)
+  pnpmInstall(manifest, dir, ['--frozen-lockfile'])
+  run('pnpm', ['build'], dir)
+  if (!existsSync(path.join(dir, 'lib'))) throw new Error(`${name} built without producing lib/ in ${dir}`)
+  return `file:${dir}`
+}
+
+const resolveDeps = (manifest) => {
+  const deps = {}
+  for (const [name, spec] of Object.entries(manifest.deps)) {
+    deps[name] = spec && typeof spec === 'object' && spec.repository ? ensureSource(manifest, name, spec) : spec
+  }
+  return deps
+}
+
 const profilePackage = manifest => ({
   name: `dsh-profile-${manifest.profile}`, private: true,
-  dependencies: manifest.deps,
+  dependencies: resolveDeps(manifest),
   dsh: { profile: { bundles: manifest.bundles } },
 })
 const profilePatch = manifest => {
@@ -63,15 +104,7 @@ export function buildProfile(manifest, { force = false } = {}) {
   }
   if (packageChanged || patchChanged) {
     console.log('profile files updated; installing profile dependencies with pnpm')
-    let installed = spawnSync('pnpm', ['install'], { cwd: manifest.profileDir, stdio: 'inherit' })
-    if (installed.status !== 0) {
-      // pnpm picks a store on the project's filesystem for some mounts (e.g. /tmp) and that
-      // store may not be writable; retry once with a store this deployment owns.
-      const store = path.join(manifest.ohmysaHome, 'pnpm-store')
-      console.log(`pnpm install failed; retrying with --store-dir=${store}`)
-      installed = spawnSync('pnpm', ['install', `--store-dir=${store}`], { cwd: manifest.profileDir, stdio: 'inherit' })
-    }
-    if (installed.status !== 0) throw new Error('pnpm install failed in the profile')
+    pnpmInstall(manifest, manifest.profileDir)
   } else {
     console.log('profile already matches the manifest; nothing to install')
   }
