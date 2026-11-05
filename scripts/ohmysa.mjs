@@ -21,7 +21,7 @@ const USAGE = `ohmysa — minimal launcher for one dsh-superagent deployment
   ohmysa export            snapshot this deployment's settings into settings/
   ohmysa apply             apply the snapshot to the running Host
 
-options: --profile <name> --port <n> --ohmysa-home <dir> --dsh-home <dir> --repo <dir>
+options: --profile <name> --port <n> --ohmysa-home <dir> --dsh-home <dir> --state-dir <dir> --repo <dir>
 `
 
 const argv = process.argv.slice(2)
@@ -29,7 +29,7 @@ const command = argv[0]
 const flag = name => { const index = argv.indexOf(name); return index >= 0 ? argv[index + 1] : undefined }
 const overrides = {
   profile: flag('--profile'), port: flag('--port') === undefined ? undefined : Number(flag('--port')),
-  ohmysaHome: flag('--ohmysa-home'), dshHome: flag('--dsh-home'),
+  ohmysaHome: flag('--ohmysa-home'), dshHome: flag('--dsh-home'), stateDir: flag('--state-dir'),
 }
 const repo = flag('--repo') ?? REPO
 const manifest = loadManifest(repo, overrides)

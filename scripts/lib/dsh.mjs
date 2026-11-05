@@ -63,7 +63,14 @@ export function buildProfile(manifest, { force = false } = {}) {
   }
   if (packageChanged || patchChanged) {
     console.log('profile files updated; installing profile dependencies with pnpm')
-    const installed = spawnSync('pnpm', ['install'], { cwd: manifest.profileDir, stdio: 'inherit' })
+    let installed = spawnSync('pnpm', ['install'], { cwd: manifest.profileDir, stdio: 'inherit' })
+    if (installed.status !== 0) {
+      // pnpm picks a store on the project's filesystem for some mounts (e.g. /tmp) and that
+      // store may not be writable; retry once with a store this deployment owns.
+      const store = path.join(manifest.ohmysaHome, 'pnpm-store')
+      console.log(`pnpm install failed; retrying with --store-dir=${store}`)
+      installed = spawnSync('pnpm', ['install', `--store-dir=${store}`], { cwd: manifest.profileDir, stdio: 'inherit' })
+    }
     if (installed.status !== 0) throw new Error('pnpm install failed in the profile')
   } else {
     console.log('profile already matches the manifest; nothing to install')

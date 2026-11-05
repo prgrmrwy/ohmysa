@@ -42,8 +42,11 @@ export async function start(manifest, { repo }) {
   const deadline = Date.now() + 120_000
   while (Date.now() < deadline) {
     const state = await stateOf(manifest)
-    if (state?.health?.runtime === 'ready' || state?.health?.runtime === 'paused') {
-      console.log(`started ${unitName(manifest)}: http://${manifest.host}:${manifest.port}/  log: ${log}`)
+    // A fresh deployment is legitimately `paused` until setup (e.g. the GitHub Source names a
+    // repository): serving the state endpoint is what "started" means here.
+    if (state?.health?.runtime) {
+      const setup = state.setup?.problem ? ` (setup pending: ${state.setup.problem.code})` : ''
+      console.log(`started ${unitName(manifest)}: http://${manifest.host}:${manifest.port}/${setup}  log: ${log}`)
       return { unit: unitName(manifest), log, state }
     }
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -72,7 +75,8 @@ export async function status(manifest) {
     health: state?.health ?? null, setup: state?.setup?.problem ?? null,
     log: newestLog(manifest) ?? null,
   }, null, 2))
-  return running && state?.setup?.problem == null ? 0 : 1
+  // Serving counts as healthy even while setup is pending; the setup problem is printed above.
+  return running && state?.health?.runtime ? 0 : 1
 }
 
 export const logPath = newestLog

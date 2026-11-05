@@ -6,7 +6,13 @@ import yaml from 'js-yaml'
 export const expandHome = value => typeof value === 'string' && value.startsWith('~') ? path.join(homedir(), value.slice(1)) : value
 
 const substitute = (value, vars) => {
-  if (typeof value === 'string') return value.replace(/\{\{(\w+)\}\}/g, (_, key) => String(vars[key] ?? `{{${key}}}`))
+  if (typeof value === 'string') {
+    // A value that is exactly one placeholder keeps the variable's type: ports and other
+    // numbers must reach the plugin schema as numbers, not strings.
+    const whole = /^\{\{(\w+)\}\}$/.exec(value)
+    if (whole) return vars[whole[1]] ?? value
+    return value.replace(/\{\{(\w+)\}\}/g, (_, key) => String(vars[key] ?? `{{${key}}}`))
+  }
   if (Array.isArray(value)) return value.map(item => substitute(item, vars))
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, substitute(item, vars)]))
   return value
@@ -17,19 +23,32 @@ export function loadManifest(repo, overrides = {}) {
   const manifest = { ...raw }
   for (const [key, value] of Object.entries(overrides)) if (value !== undefined) manifest[key] = value
   for (const key of ['dshVersion', 'profile', 'port']) if (manifest[key] === undefined) throw new Error(`ohmysa.yaml is missing ${key}`)
+  const dshHome = expandHome(manifest.dshHome ?? '~/.dsh')
+  const stateDirOverride = overrides.stateDir
+  let stateDir = stateDirOverride ?? manifest.stateDir
+  if (stateDir === undefined) stateDir = path.join(dshHome, 'state', manifest.profile)
+  else {
+    stateDir = expandHome(stateDir)
+    // `--dsh-home` must move the default state location with it, otherwise an isolated
+    // build would point the Host at the production database.
+    const defaultHome = expandHome('~/.dsh')
+    if (!stateDirOverride && dshHome !== defaultHome && stateDir.startsWith(defaultHome + path.sep)) {
+      stateDir = path.join(dshHome, stateDir.slice(defaultHome.length + 1))
+    }
+  }
   const vars = {
-    home: path.join(homedir(), '.dsh'),
+    dshHome,
     profile: manifest.profile,
     port: manifest.port,
     host: manifest.host ?? '127.0.0.1',
-    stateDir: expandHome(manifest.stateDir ?? `~/.dsh/state/${manifest.profile}`),
+    stateDir,
     ohmysaHome: expandHome(manifest.ohmysaHome ?? '~/.ohmysa'),
   }
   manifest.host = vars.host
   manifest.stateDir = vars.stateDir
   manifest.ohmysaHome = vars.ohmysaHome
-  manifest.dshHome = expandHome(manifest.dshHome ?? '~/.dsh')
-  manifest.profileDir = path.join(manifest.dshHome, 'profiles', manifest.profile)
+  manifest.dshHome = dshHome
+  manifest.profileDir = path.join(dshHome, 'profiles', manifest.profile)
   manifest.logsDir = path.join(manifest.ohmysaHome, 'logs')
   manifest.runtimeDir = path.join(manifest.ohmysaHome, 'runtime')
   manifest.patch = substitute(manifest.patch ?? [], vars)
