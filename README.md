@@ -77,10 +77,24 @@ deps:
 No internal or closed-source registry is required. If a future dependency needs one, set
 `npmrcFrom` in the manifest to a local `.npmrc` and treat it as an operator step.
 
+## Isolation from the daily DSH
+
+ohmysa runs its Host with its own DSH home (`dshHome`, default `~/.ohmysa/dsh-home`), not the
+operator's `~/.dsh`. Profile, state, sessions, credentials, plugin settings, `AGENTS.md`
+(generated from `instructions/AGENTS.md`) and skills are all separate, so nothing a daily
+customization repo materializes reaches the super-agent's workers.
+
+Secret-bearing machine state is copied once, never committed:
+
+```sh
+ohmysa import              # from ~/.dsh: .credentials.yaml, Magpie lines, auto-routing config
+ohmysa import --from <dir> --force
+```
+
 ## Moving to another machine
 
 1. clone this repo (manifest + `settings/` snapshot);
-2. `node scripts/bootstrap.mjs && ohmysa build && ohmysa start`;
+2. `node scripts/bootstrap.mjs && ohmysa build && ohmysa import && ohmysa start`;
 3. `ohmysa apply` to restore the exported settings;
 4. do the operator steps secrets need: sign `gh` in as the agent account and add the Magpie
    lines (they live under `$DSH_HOME/plugins` and the DSH credentials store).
