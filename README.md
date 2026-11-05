@@ -15,6 +15,7 @@ Secrets are never stored here.
 | `scripts/lib/settings.mjs` | `export`/`apply` for the deployment's settings via the management API |
 | `settings/` | exported settings/prompts snapshots (no secrets) |
 | `bin/ohmysa` | cross-shell launcher |
+| `ohmysa.local.yaml` | gitignored machine-local dependency overrides (local checkouts); the committed manifest stays reproducible |
 
 ## Use
 
@@ -29,17 +30,51 @@ ohmysa log -f                       # follow the newest Host log
 ohmysa restart                      # stop -> build -> start
 ```
 
+### Panel access (same-origin fence)
+
 The panel is served on `http://127.0.0.1:<port>/` (token in the newest log's `dsh web:` line).
-A terminal port-forward may use another local port; DSH refuses only non-loopback hosts.
+`dsh-superagent`'s management API accepts only requests whose `Host` is the loopback address the
+profile was configured with, so **open the panel through exactly that host:port** — e.g. an SSH
+tunnel that maps a local port `3082` to `127.0.0.1:3082`:
+
+```sh
+ssh -L 3082:127.0.0.1:3082 <host>
+```
+
+If the panel must be reached through another local port or a domain, terminate it with a header-
+rewriting proxy instead of patching the plugin, e.g.:
+
+```nginx
+location / {
+  proxy_pass http://127.0.0.1:3082;
+  proxy_set_header Host 127.0.0.1:3082;
+  proxy_set_header Origin "";
+}
+```
+
+(Stripping `Origin` is safe here: the API's anti-CSRF header `x-orchestrator-request` is still
+required and the proxy must only listen on trusted interfaces.)
+
+### Dependency sources
+
+| Dependency | Source |
+| --- | --- |
+| `@deepseek-ai/dsh` | npm, exact `dshVersion` pin |
+| `dsh-superagent` | TODO: published artifact (npm release or built GitHub-release tarball); local override in `ohmysa.local.yaml` until then |
+| `dsh-magpie-connector`, `dsh-auto-model-routing` | npm |
+| `dsh-cockpit-bridge` | GitHub release tarball |
+| `dsh-cockpit-worktree-open-shim`, `dsh-cockpit-memex-browse-shim` | npm (published from ohmydsh) |
+
+No internal or closed-source registry is required. If a future dependency needs one, set
+`npmrcFrom` in the manifest to a local `.npmrc` and treat it as an operator step.
 
 ## Moving to another machine
 
 1. clone this repo (manifest + `settings/` snapshot);
 2. `node scripts/bootstrap.mjs && ohmysa build && ohmysa start`;
 3. `ohmysa apply` to restore the exported settings;
-4. do the operator steps secrets need: sign `gh` in as the agent account, log TraeX in, add Magpie
-   lines (they live under `$DSH_HOME/plugins` and credentials), and copy the internal registry
-   `.npmrc` (used only for installing `@byted/*`; the file itself stays out of git).
+4. do the operator steps secrets need: sign `gh` in as the agent account and add the Magpie
+   lines (they live under `$DSH_HOME/plugins` and the DSH credentials store).
 
 `ohmysa export` on the old machine writes `settings/settings.json` and `settings/prompts.json`;
 commit them. State (tickets/sessions/DB under `stateDir`) is intentionally not migrated: back it up

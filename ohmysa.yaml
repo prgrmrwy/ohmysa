@@ -15,14 +15,14 @@ ohmysaHome: "~/.ohmysa"
 
 # The profile's dependencies (exact specs) and the bundle order DSH loads.
 deps:
-  # Local override for development; the reproducible spec still has to be pinned (fork/release).
+  # TODO: replace with a published artifact (npm release or built GitHub-release tarball) so a
+  # clean machine can build this manifest; until then ohmysa.local.yaml points at a local checkout.
   dsh-superagent: "link:/data00/home/prgrmr/opensource/dsh-superagent-prototype"
   dsh-magpie-connector: "0.6.10"   # published on npm
   dsh-auto-model-routing: "0.6.7"  # published on npm
-  "@byted/dsh-traex-bridge": "0.1.16"
   dsh-cockpit-bridge: "https://github.com/prgrmrwy/dsh-cockpit/releases/download/dsh-cockpit-bridge-v0.6.4/dsh-cockpit-bridge-0.6.4.tgz"
-  dsh-cockpit-worktree-open-shim: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/cockpit-worktree-open-shim"
-  dsh-cockpit-memex-browse-shim: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/cockpit-memex-browse-shim"
+  dsh-cockpit-worktree-open-shim: "0.1.0"   # published from ohmydsh
+  dsh-cockpit-memex-browse-shim: "0.2.0"    # published from ohmydsh
 
 bundles:
   - "@deepseek-ai/dsh-base"
@@ -30,14 +30,9 @@ bundles:
   - dsh-superagent
   - dsh-magpie-connector
   - dsh-auto-model-routing
-  - "@byted/dsh-traex-bridge"
   - dsh-cockpit-bridge
   - dsh-cockpit-worktree-open-shim
   - dsh-cockpit-memex-browse-shim
-
-# Copied into the profile before dependency installation when the profile has none
-# (needed for the internal @byted registry). The file itself stays out of git.
-npmrcFrom: "~/.dsh/profiles/web/.npmrc"
 
 # The profile patch layer, applied after every bundle layer. {{name}} is substituted
 # from the top-level values above.
