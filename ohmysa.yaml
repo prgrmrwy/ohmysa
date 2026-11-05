@@ -1,0 +1,69 @@
+# ohmysa.yaml — the single source of truth for one dsh-superagent deployment.
+# `ohmysa build` materializes this into a DSH profile; `ohmysa start|stop|restart|status`
+# runs that profile as a transient systemd user service; `ohmysa export|apply` moves the
+# deployment's settings between machines. Secrets are never stored here: they are
+# operator steps (gh/traex logins, registry auth) documented in README.md.
+
+dshVersion: 0.2.1-rc.5          # exact official DSH version this deployment runs
+profile: superagent             # DSH profile created from the default web template
+host: 127.0.0.1
+port: 3082
+stateDir: "~/.dsh/state/superagent"
+
+# Where the pinned DSH runtime is installed and where logs/settings snapshots live.
+ohmysaHome: "~/.ohmysa"
+
+# The profile's dependencies (exact specs) and the bundle order DSH loads.
+deps:
+  dsh-superagent: "link:/data00/home/prgrmr/opensource/dsh-superagent-prototype"
+  dsh-magpie-connector: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/dsh-magpie-connector"
+  dsh-auto-model-routing: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/dsh-auto-model-routing"
+  "@byted/dsh-traex-bridge": "0.1.16"
+  dsh-cockpit-bridge: "https://github.com/prgrmrwy/dsh-cockpit/releases/download/dsh-cockpit-bridge-v0.6.4/dsh-cockpit-bridge-0.6.4.tgz"
+  dsh-cockpit-worktree-open-shim: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/cockpit-worktree-open-shim"
+  dsh-cockpit-memex-browse-shim: "file:/data00/home/prgrmr/opensource/ohmydsh/packages/cockpit-memex-browse-shim"
+
+bundles:
+  - "@deepseek-ai/dsh-base"
+  - "@deepseek-ai/dsh-web-app"
+  - dsh-superagent
+  - dsh-magpie-connector
+  - dsh-auto-model-routing
+  - "@byted/dsh-traex-bridge"
+  - dsh-cockpit-bridge
+  - dsh-cockpit-worktree-open-shim
+  - dsh-cockpit-memex-browse-shim
+
+# Copied into the profile before dependency installation when the profile has none
+# (needed for the internal @byted registry). The file itself stays out of git.
+npmrcFrom: "~/.dsh/profiles/web/.npmrc"
+
+# The profile patch layer, applied after every bundle layer. {{name}} is substituted
+# from the top-level values above.
+patch:
+  - id: webserver
+    config: { host: "{{host}}", port: "{{port}}" }
+  - id: dsh-superagent
+    config: { stateDir: "{{stateDir}}" }
+  - id: agent-default-model
+    config: { provider: deepseek-official, model: deepseek-flash }
+  - id: web
+    config: { searchProvider: deepseek-official, fetchProvider: http }
+  - id: ui-settings-general
+    name: "@deepseek-ai/dsh-client-ui-settings-general"
+    config: { welcomeNoticeVersion: "2026-09-28.1" }
+  - id: permission
+    name: "@deepseek-ai/dsh-permission-presets"
+    config:
+      presets:
+        read-only: { sandbox: read-only, approval: ask }
+        workspace-write: { sandbox: workspace-write, approval: ask }
+        danger-full-access: { sandbox: danger-full-access, approval: never }
+      defaultPreset: danger-full-access
+  - id: locale
+    name: "@deepseek-ai/dsh-client-locale"
+    config: { preference: zh }
+
+# Settings snapshot applied by `ohmysa apply` (written by `ohmysa export`).
+settings: settings/settings.json
+prompts: settings/prompts.json

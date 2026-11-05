@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# ohmysa — minimal launcher for one dsh-superagent deployment.
+# Install: ln -s <repo>/bin/ohmysa ~/.local/bin/ohmysa
+set -euo pipefail
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+REPO="$(cd "$(dirname "$SOURCE")/.." && pwd)"
+if ! command -v node >/dev/null 2>&1; then
+  echo "error: Node.js >=22.19 is required: https://nodejs.org/" >&2
+  exit 1
+fi
+exec node "$REPO/scripts/ohmysa.mjs" "$@"

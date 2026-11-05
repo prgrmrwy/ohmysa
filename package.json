@@ -1,0 +1,14 @@
+{
+  "name": "ohmysa",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ohmysa — minimal self-contained launcher for one dsh-superagent deployment",
+  "type": "module",
+  "engines": { "node": ">=22.19.0" },
+  "scripts": {
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "build": "node scripts/ohmysa.mjs build",
+    "status": "node scripts/ohmysa.mjs status"
+  },
+  "dependencies": { "js-yaml": "4.1.0" }
+}
