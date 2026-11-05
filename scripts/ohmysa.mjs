@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadManifest } from './lib/manifest.mjs'
-import { buildProfile, ensureRuntime, runtimeBin } from './lib/dsh.mjs'
+import { buildProfile, ensureRuntime, importState, runtimeBin } from './lib/dsh.mjs'
 import { logPath, start, status, stop, unitName } from './lib/service.mjs'
 import { applySettings, exportSettings } from './lib/settings.mjs'
 
@@ -18,6 +18,7 @@ const USAGE = `ohmysa — minimal launcher for one dsh-superagent deployment
   ohmysa restart           stop, build, start
   ohmysa status            unit/health/log summary (exit 0 when healthy)
   ohmysa log [-f]          newest Host log, optionally follow it
+  ohmysa import [--from d] copy credentials/plugin settings from another DSH home (default ~/.dsh)
   ohmysa export            snapshot this deployment's settings into settings/
   ohmysa apply             apply the snapshot to the running Host
 
@@ -72,6 +73,7 @@ const main = async () => {
       const tailed = spawnSync('tail', [...(follow ? ['-f'] : ['-n', '200']), file], { stdio: 'inherit' })
       return tailed.status ?? 0
     }
+    case 'import': importState(manifest, flag('--from') ?? '~/.dsh', { force: argv.includes('--force') }); return 0
     case 'export': await exportSettings(manifest, repo); return 0
     case 'apply': await applySettings(manifest, repo); return 0
     case undefined: case '-h': case '--help': case 'help': console.log(USAGE); return 0

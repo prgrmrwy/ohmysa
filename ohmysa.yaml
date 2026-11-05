@@ -8,10 +8,24 @@ dshVersion: 0.2.1-rc.5          # exact official DSH version this deployment run
 profile: superagent             # DSH profile created from the default web template
 host: 127.0.0.1
 port: 3082
-stateDir: "~/.dsh/state/superagent"
-
 # Where the pinned DSH runtime is installed and where logs/settings snapshots live.
 ohmysaHome: "~/.ohmysa"
+
+# This deployment's own DSH home, isolated from the operator's daily ~/.dsh: its profile,
+# state (default <dshHome>/state/<profile>), sessions, credentials, plugin settings,
+# AGENTS.md and skills all live here, so nothing the daily customization repo generates
+# leaks into the super-agent's workers.
+dshHome: "~/.ohmysa/dsh-home"
+
+# Written to <dshHome>/AGENTS.md on every build (the agents' home-level instructions).
+instructions: instructions/AGENTS.md
+
+# `ohmysa import [--from <dir>]` copies these machine-local, secret-bearing items from an
+# existing DSH home (default ~/.dsh) into <dshHome>. They never enter git.
+import:
+  - .credentials.yaml
+  - plugins/dsh-magpie-connector/settings.json
+  - plugins/dsh-auto-model-routing
 
 # The profile's dependencies (exact specs) and the bundle order DSH loads.
 deps:

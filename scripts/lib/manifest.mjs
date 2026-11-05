@@ -59,6 +59,7 @@ export function loadManifest(repo, overrides = {}) {
   manifest.stateDir = vars.stateDir
   manifest.ohmysaHome = vars.ohmysaHome
   manifest.dshHome = dshHome
+  manifest.repo = repo
   manifest.profileDir = path.join(dshHome, 'profiles', manifest.profile)
   manifest.logsDir = path.join(manifest.ohmysaHome, 'logs')
   manifest.runtimeDir = path.join(manifest.ohmysaHome, 'runtime')
