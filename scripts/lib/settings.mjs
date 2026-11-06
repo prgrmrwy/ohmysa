@@ -27,7 +27,9 @@ export async function waitReady(manifest, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const state = await readState(manifest)
-    if (state?.health?.runtime === 'ready' || state?.health?.runtime === 'paused') return state
+    // health.runtime is `{ state, detail, ... }` in current dsh-superagent; older builds sent a bare string.
+    const runtime = state?.health?.runtime?.state ?? state?.health?.runtime
+    if (runtime === 'ready' || runtime === 'paused') return state
     await new Promise(resolve => setTimeout(resolve, 1000))
   }
   throw new Error(`the Host at ${manifest.host}:${manifest.port} did not become ready within ${timeoutMs / 1000}s`)
