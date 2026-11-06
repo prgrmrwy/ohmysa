@@ -31,6 +31,9 @@ export function ensureRuntime(manifest) {
 }
 
 const pnpmInstall = (manifest, cwd, extra = []) => {
+  // pnpm 11 fails on unapproved dependency build scripts (strictDepBuilds) and prompts before
+  // purging node_modules; neither is wanted for an unattended deploy.
+  extra = ['--config.strict-dep-builds=false', '--config.confirm-modules-purge=false', ...extra]
   let installed = spawnSync('pnpm', ['install', ...extra], { cwd, stdio: 'inherit' })
   if (installed.status !== 0) {
     // pnpm may pick a store on the project's filesystem (e.g. /tmp) that is not writable;
@@ -128,9 +131,14 @@ export function buildProfile(manifest, { force = false } = {}) {
     const from = manifest.npmrcFrom.startsWith('~') ? path.join(process.env.HOME, manifest.npmrcFrom.slice(1)) : manifest.npmrcFrom
     if (existsSync(from)) copyFileSync(from, path.join(manifest.profileDir, '.npmrc'))
   }
-  if (packageChanged || patchChanged) {
+  // Marker holds the package.json last installed successfully, so a failed install is retried.
+  const marker = path.join(manifest.profileDir, 'node_modules/.ohmysa-installed')
+  const pkg = readFileSync(path.join(manifest.profileDir, 'package.json'), 'utf8')
+  const installed = existsSync(marker) && readFileSync(marker, 'utf8') === pkg
+  if (packageChanged || patchChanged || !installed) {
     console.log('profile files updated; installing profile dependencies with pnpm')
     pnpmInstall(manifest, manifest.profileDir)
+    writeFileSync(marker, pkg)
   } else {
     console.log('profile already matches the manifest; nothing to install')
   }
