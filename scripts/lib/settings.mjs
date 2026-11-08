@@ -41,13 +41,12 @@ const filePath = (repo, value) => path.isAbsolute(value) ? value : path.join(rep
 export async function exportSettings(manifest, repo) {
   const settings = await request(manifest, 'GET', 'settings')
   const prompts = await request(manifest, 'GET', 'prompts')
-  const item = id => settings.sources.find(source => source.id === id)?.value
   const snapshot = {
     exportedAt: new Date().toISOString(),
     policy: settings.blocks.policy.value,
     eval: settings.blocks.eval.value,
     executor: settings.blocks.executor.value,
-    sources: { github: item('github') ?? null },
+    sources: Object.fromEntries(settings.sources.filter(source => source.installed !== false).map(source => [source.id, source.value])),
     prompts: prompts.current.config,
   }
   const settingsFile = filePath(repo, manifest.settings ?? 'settings/settings.json')
@@ -60,7 +59,7 @@ export async function exportSettings(manifest, repo) {
 
 const save = async (manifest, block, route, value) => {
   const settings = await request(manifest, 'GET', 'settings')
-  const current = block === 'source:github' ? settings.sources.find(source => source.id === 'github') : settings.blocks[block]
+  const current = block.startsWith('source:') ? settings.sources.find(source => source.id === block.slice(7)) : settings.blocks[block]
   if (!current) throw new Error(`no settings block ${block} in this deployment`)
   const saved = await request(manifest, 'PUT', route, { value, revision: current.revision })
   console.log(`${block}: revision ${current.revision} -> ${saved.revision}${saved.restarting ? ' (restarting)' : ''}`)
@@ -74,7 +73,9 @@ export async function applySettings(manifest, repo) {
   if (!existsSync(settingsFile)) throw new Error(`missing ${settingsFile}; run \`ohmysa export\` first`)
   const snapshot = JSON.parse(readFileSync(settingsFile, 'utf8'))
   await waitReady(manifest)
-  if (snapshot.sources?.github) await save(manifest, 'source:github', 'settings/source:github', snapshot.sources.github)
+  for (const [id, source] of Object.entries(snapshot.sources ?? {})) {
+    if (source) await save(manifest, `source:${id}`, `settings/source:${id}`, source)
+  }
   if (snapshot.policy) await save(manifest, 'policy', 'settings/policy', snapshot.policy)
   if (snapshot.eval) await save(manifest, 'eval', 'settings/eval', snapshot.eval)
   if (snapshot.executor) await save(manifest, 'executor', 'settings/executor', snapshot.executor)
