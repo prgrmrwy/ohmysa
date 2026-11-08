@@ -54,6 +54,8 @@ patch:
     config: { host: "{{host}}", port: "{{port}}" }
   - id: dsh-superagent
     config: { stateDir: "{{stateDir}}" }
+  - id: dsh-superagent-feishu
+    disabled: false
   - id: agent-default-model
     config: { provider: deepseek-official, model: deepseek-flash }
   - id: web

@@ -185,6 +185,45 @@ deliberate stop and is not undone. No external watchdog is needed. Problems that
 After changing settings in the panel: `ohmysa export`, review the diff (no secrets are written),
 commit and push.
 
+## Dependabot PR handoff
+
+The ohmydsh workflow `.github/workflows/dependabot-bebop.yml` posts one `@agent-bebop`
+comment on a new, reopened, or ready-for-review Dependabot PR in that repository. It runs
+trusted base-branch code without checking out the PR. Repeated runs do not duplicate the comment.
+
+The settings snapshot enables `auto` assessment and admits `github-actions[bot]` as an inferred
+candidate. The `dependabot-followup` rule requires the fixed `<!-- bebop:dependabot-follow-up -->`
+marker and verification of the actual PR author and repository. Bebop validates the update,
+fixes compatibility within its scope, follows CI and reports in the original PR; a person merges.
+The other repository-wide receive switches remain off. Existing PRs are not automatically
+backfilled by adding this workflow.
+
+## Feishu bot
+
+Install the official CLI (`npm install -g @larksuite/cli@1.0.99`) and configure the existing app
+in a separate bot-only directory. Do not run user `auth login` for this bot:
+
+```sh
+LARKSUITE_CLI_CONFIG_DIR="$HOME/.lark-cli-dsh-superagent" lark-cli config init
+LARKSUITE_CLI_CONFIG_DIR="$HOME/.lark-cli-dsh-superagent" lark-cli config strict-mode bot --global
+```
+
+Create an executable wrapper that exports that directory and invokes the installed `lark-cli`.
+On this machine it is `~/.local/bin/lark-bebop`. In the sa panel's Feishu Source settings, use
+the wrapper's absolute path, enable direct messages and/or select specific chats in mentions-only
+mode. Add authorized people by their `open_id` in the Feishu policy; do not infer this identity
+from their GitHub login. The Feishu source is enabled in the manifest, but remains paused until
+its bot CLI and source settings are configured; GitHub can continue independently.
+
+The app needs the bot capability, message receive/read/send permissions, the
+`im.message.receive_v1` event and a published app version. Use a long connection for event
+subscription. After configuring, confirm Feishu health and test a new direct message or a new
+mention in an allowed chat. An unconfigured source is not proof that message delivery works.
+
+`ohmysa export` and `ohmysa apply` preserve all installed Sources, including Feishu. Keep
+machine CLI paths, chat IDs and user IDs in the local settings snapshot selected by
+`ohmysa.local.yaml`; App Secrets stay in the CLI's credential store.
+
 ## Relationship to ohmydsh
 
 ohmydsh owns the operator's daily DSH (profile `web`) and its launcher; ohmysa owns this one
