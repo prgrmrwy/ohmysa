@@ -38,6 +38,8 @@ deps:
   dsh-magpie-connector: "0.6.10"   # published on npm
   dsh-auto-model-routing: "0.7.1"  # published on npm
   dsh-cockpit-bridge: "https://github.com/prgrmrwy/dsh-cockpit/releases/download/dsh-cockpit-bridge-v0.6.4/dsh-cockpit-bridge-0.6.4.tgz"
+  # https://github.com/prgrmrwy/dsh-session-id-copy (MIT): client-only ID badge; no Host capabilities or network requests.
+  dsh-session-id-copy: "0.2.2"
 
 bundles:
   - "@deepseek-ai/dsh-base"
@@ -46,6 +48,7 @@ bundles:
   - dsh-magpie-connector
   - dsh-auto-model-routing
   - dsh-cockpit-bridge
+  - dsh-session-id-copy
 
 # The profile patch layer, applied after every bundle layer. {{name}} is substituted
 # from the top-level values above.
