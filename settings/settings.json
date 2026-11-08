@@ -40,10 +40,16 @@
   "eval": {
     "mode": "auto",
     "timeoutSeconds": 120,
-    "model": null
+    "model": {
+      "provider": "dsh-magpie-connector-codex",
+      "model": "codex/gpt-6.1-sol"
+    }
   },
   "executor": {
-    "model": null,
+    "model": {
+      "provider": "dsh-magpie-connector-codex",
+      "model": "codex/gpt-6.1-sol"
+    },
     "maxWorkers": 3,
     "directory": "",
     "prepare": "git -C /data00/home/prgrmr/src/ohmydsh fetch --no-tags \"https://github.com/$DSH_SUPERAGENT_GITHUB_REPOSITORY.git\" \"${DSH_SUPERAGENT_GITHUB_PR_HEAD:-HEAD}:refs/dsh-superagent/$DSH_SUPERAGENT_TICKET\" &&\ngit -C /data00/home/prgrmr/src/ohmydsh worktree add -b \"agent/$DSH_SUPERAGENT_NAME\" \"$DSH_SUPERAGENT_DIR\" \"refs/dsh-superagent/$DSH_SUPERAGENT_TICKET\"",

@@ -98,7 +98,9 @@ ohmysa import --from <dir> --force
 
 - Linux with a systemd user manager, and linger on so the Host survives logout:
   `loginctl enable-linger "$USER"`.
-- Node >= 22.19 (24 recommended), pnpm, git, `gh`.
+- Node >= 22.19 (24 recommended), pnpm, git, GitHub CLI >= 2.48 with `gh api --paginate --slurp` support.
+  The agent wrapper must resolve to that CLI too; merely logging in with an older system `gh`
+  leaves polling apparently healthy until the first PR/comment read fails.
 - The super-agent's target repository cloned somewhere (the Executor's `prepare` command makes
   worktrees from it), e.g. `git clone https://github.com/<owner>/<repo> ~/src/<repo>`.
 

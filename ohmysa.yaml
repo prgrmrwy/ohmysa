@@ -57,7 +57,7 @@ patch:
   - id: dsh-superagent-feishu
     disabled: false
   - id: agent-default-model
-    config: { provider: deepseek-official, model: deepseek-flash }
+    config: { provider: dsh-magpie-connector-codex, model: codex/gpt-6.1-sol }
   - id: web
     config: { searchProvider: deepseek-official, fetchProvider: http }
   - id: ui-settings-general
