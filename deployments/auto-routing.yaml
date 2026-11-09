@@ -1,0 +1,8 @@
+# Third deployment: follows issues and PRs on prgrmrwy/dsh-auto-model-routing.
+# Overlay on ohmysa.yaml; select it with `ohmysa <command> --deployment auto-routing`.
+# Same pattern as deployments/magpie.yaml (one GitHub repository per deployment).
+profile: auto-routing
+port: 3085
+dshHome: "~/.ohmysa/dsh-home-auto-routing"
+settings: settings/auto-routing/settings.json
+prompts: settings/auto-routing/prompts.json
