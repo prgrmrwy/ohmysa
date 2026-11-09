@@ -1,0 +1,11 @@
+# Second deployment: follows issues and PRs on prgrmrwy/dsh-magpie-connector.
+# Overlay on ohmysa.yaml; select it with `ohmysa <command> --deployment magpie`.
+# One dsh-superagent GitHub Source watches exactly one repository, so each repository
+# the agent follows gets its own deployment (own profile, port, DSH home and snapshots).
+# Both deployments share the agent GitHub account; each only reads its own repository's
+# notifications and none marks them read. Machine paths go in ohmysa.magpie.local.yaml.
+profile: magpie
+port: 3084
+dshHome: "~/.ohmysa/dsh-home-magpie"
+settings: settings/magpie/settings.json
+prompts: settings/magpie/prompts.json

@@ -24,7 +24,8 @@ const USAGE = `ohmysa — minimal launcher for one dsh-superagent deployment
   ohmysa export            snapshot this deployment's settings into settings/
   ohmysa apply             apply the snapshot to the running Host
 
-options: --profile <name> --port <n> --ohmysa-home <dir> --dsh-home <dir> --state-dir <dir> --repo <dir>
+options: --deployment <name>  use deployments/<name>.yaml + ohmysa.<name>.local.yaml (default: ohmysa.yaml + ohmysa.local.yaml)
+         --profile <name> --port <n> --ohmysa-home <dir> --dsh-home <dir> --state-dir <dir> --repo <dir>
 `
 
 const argv = process.argv.slice(2)
@@ -35,7 +36,7 @@ const overrides = {
   ohmysaHome: flag('--ohmysa-home'), dshHome: flag('--dsh-home'), stateDir: flag('--state-dir'),
 }
 const repo = flag('--repo') ?? REPO
-const manifest = loadManifest(repo, overrides)
+const manifest = loadManifest(repo, overrides, flag('--deployment'))
 const noBuild = argv.includes('--no-build')
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 

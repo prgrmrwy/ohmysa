@@ -226,6 +226,24 @@ mention in an allowed chat. An unconfigured source is not proof that message del
 machine CLI paths, chat IDs and user IDs in the local settings snapshot selected by
 `ohmysa.local.yaml`; App Secrets stay in the CLI's credential store.
 
+## Additional deployments
+
+A dsh-superagent GitHub Source watches exactly one repository, so each further repository
+gets its own deployment: `deployments/<name>.yaml` overlays `ohmysa.yaml` with its own
+`profile`, `port`, `dshHome` and `settings`/`prompts` snapshot paths (all required to differ
+from the default). Machine paths go in the gitignored `ohmysa.<name>.local.yaml`; the default
+deployment's `ohmysa.local.yaml` is not read. Pass `--deployment <name>` to every command:
+
+```sh
+ohmysa build --deployment magpie
+ohmysa import --deployment magpie
+ohmysa install-service --deployment magpie
+ohmysa start --deployment magpie
+```
+
+Deployments may share the agent GitHub account: each reads only its own repository's
+notifications and none marks them read.
+
 ## Relationship to ohmydsh
 
 ohmydsh owns the operator's daily DSH (profile `web`) and its launcher; ohmysa owns this one

@@ -26,11 +26,27 @@ const mergeLocal = (base, local) => {
   return merged
 }
 
-export function loadManifest(repo, overrides = {}) {
+const readYaml = file => existsSync(file) ? yaml.load(readFileSync(file, 'utf8')) ?? {} : {}
+
+/**
+ * Without `deployment`: ohmysa.yaml + ohmysa.local.yaml (the original single deployment).
+ * With `deployment`: ohmysa.yaml + deployments/<name>.yaml (committed: profile, port, dshHome,
+ * snapshot paths) + ohmysa.<name>.local.yaml (gitignored machine overrides). The default
+ * deployment's local file is not read, so its port and snapshot paths never leak into another.
+ */
+export function loadManifest(repo, overrides = {}, deployment) {
   const committed = yaml.load(readFileSync(path.join(repo, 'ohmysa.yaml'), 'utf8'))
-  const localFile = path.join(repo, 'ohmysa.local.yaml')
-  const local = existsSync(localFile) ? yaml.load(readFileSync(localFile, 'utf8')) ?? {} : {}
-  const raw = mergeLocal(committed, local)
+  let raw
+  if (deployment === undefined) raw = mergeLocal(committed, readYaml(path.join(repo, 'ohmysa.local.yaml')))
+  else {
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(deployment)) throw new Error(`invalid deployment name: ${deployment}`)
+    const overlayFile = path.join(repo, 'deployments', `${deployment}.yaml`)
+    if (!existsSync(overlayFile)) throw new Error(`unknown deployment ${deployment}: missing ${overlayFile}`)
+    raw = mergeLocal(mergeLocal(committed, readYaml(overlayFile)), readYaml(path.join(repo, `ohmysa.${deployment}.local.yaml`)))
+    for (const key of ['profile', 'port', 'dshHome', 'settings', 'prompts']) {
+      if (raw[key] === committed[key]) throw new Error(`deployment ${deployment} must set its own ${key} (it equals the default deployment's)`)
+    }
+  }
   const manifest = { ...raw }
   for (const [key, value] of Object.entries(overrides)) if (value !== undefined) manifest[key] = value
   for (const key of ['dshVersion', 'profile', 'port']) if (manifest[key] === undefined) throw new Error(`ohmysa.yaml is missing ${key}`)

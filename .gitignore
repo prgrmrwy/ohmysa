@@ -4,3 +4,5 @@ runtime/
 profiles/
 *.log
 ohmysa.local.yaml
+ohmysa.*.local.yaml
+.archify/
