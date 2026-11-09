@@ -46,7 +46,7 @@
     },
     "maxWorkers": 2,
     "directory": "",
-    "prepare": "for i in 1 2 3 4 5; do git -C /home/dev/opensource/dsh-magpie-connector fetch --no-tags \"https://github.com/$DSH_SUPERAGENT_GITHUB_REPOSITORY.git\" \"${DSH_SUPERAGENT_GITHUB_PR_HEAD:-HEAD}:refs/dsh-superagent/$DSH_SUPERAGENT_TICKET\" && break; [ \"$i\" = 5 ] && exit 1; sleep $((i * 5)); done &&\ngit -C /home/dev/opensource/dsh-magpie-connector worktree add -b \"agent/$DSH_SUPERAGENT_NAME\" \"$DSH_SUPERAGENT_DIR\" \"refs/dsh-superagent/$DSH_SUPERAGENT_TICKET\"",
+    "prepare": "ok=; err=; for i in 1 2 3 4 5; do err=$(git -C /home/dev/opensource/dsh-magpie-connector fetch --no-tags \"https://github.com/$DSH_SUPERAGENT_GITHUB_REPOSITORY.git\" \"${DSH_SUPERAGENT_GITHUB_PR_HEAD:-HEAD}:refs/dsh-superagent/$DSH_SUPERAGENT_TICKET\" 2>&1) && { ok=1; break; }; [ \"$i\" = 5 ] || sleep $((i * 5)); done\nif [ -z \"$ok\" ]; then\n  if [ -n \"$DSH_SUPERAGENT_GITHUB_NUMBER\" ]; then\n    body=\"@prgrmrwy 工单 $DSH_SUPERAGENT_TICKET 准备工作目录时，从 GitHub 拉取代码连续 5 次失败，判断是本机到 GitHub 的网络问题，工单已暂停；网络恢复后请在 SA 面板重试这张工单。(Fetching from GitHub failed 5 times due to a network problem; the ticket is paused until it is retried.) 最后一次错误：$(printf '%s' \"$err\" | tail -n 2)\"\n    for j in 1 2 3 4 5; do /home/dev/.local/bin/gh-agent issue comment \"$DSH_SUPERAGENT_GITHUB_NUMBER\" --repo \"$DSH_SUPERAGENT_GITHUB_REPOSITORY\" --body \"$body\" >/dev/null 2>&1 && break; [ \"$j\" = 5 ] || sleep $((j * 5)); done\n  fi\n  printf '%s\\n' \"$err\" >&2; exit 1\nfi\ngit -C /home/dev/opensource/dsh-magpie-connector worktree add -b \"agent/$DSH_SUPERAGENT_NAME\" \"$DSH_SUPERAGENT_DIR\" \"refs/dsh-superagent/$DSH_SUPERAGENT_TICKET\"",
     "blockedCommands": []
   },
   "sources": {
