@@ -200,6 +200,25 @@ fixes compatibility within its scope, follows CI and reports in the original PR;
 The other repository-wide receive switches remain off. Existing PRs are not automatically
 backfilled by adding this workflow.
 
+## External PR review handoff
+
+`settings/pr-review-handoff.yml` is the shared workflow deployed as
+`.github/workflows/pr-review-handoff.yml` in ohmydsh, dsh-magpie-connector and
+ dsh-auto-model-routing. It scans hourly at minute 37 and hands external human PRs
+ to Bebop once they are at least four hours old (plus scheduler delay). Existing
+ eligible open PRs are included. Drafts, maintainer/agent/bot PRs, prior handoffs,
+ explicit maintainer @agent-bebop assignments and PRs already handled or reviewed
+ by Bebop are skipped. An ordinary maintainer reply does not suppress PR review.
+
+Each deployment's `external-pr-review` policy verifies the trusted Actions author,
+ `<!-- bebop:pr-review -->` marker, repository, author, age and current PR state.
+ Bebop reviews without modifying, approving or merging, then posts a summary in
+ the original PR mentioning @prgrmrwy and linking its review. Untrusted PR code
+ must not be executed with credentials or privileged service access. Source-wide
+ observation stays off so it cannot bypass the four-hour delay. No SA restart is
+ needed to update this policy. The workflow only calls GitHub APIs and never
+ checks out PR code; test its inline script with `node --test tests/pr-review-handoff.test.mjs`.
+
 ## Feishu bot
 
 Install the official CLI (`npm install -g @larksuite/cli@1.0.99`) and configure the existing app
