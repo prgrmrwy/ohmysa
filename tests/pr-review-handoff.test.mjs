@@ -8,14 +8,16 @@ const script = workflow.jobs.handoff.steps[0].with.script
 const run = new (Object.getPrototypeOf(async function () {}).constructor)('github', 'context', 'core', script)
 const old = new Date(Date.now() - 5 * 3600_000).toISOString()
 const pr = (number, extra = {}) => ({ number, state: 'open', draft: false, created_at: old, user: { login: 'contributor', type: 'User' }, ...extra })
-async function simulate(pulls, { comments = {}, reviews = {}, current = {} } = {}) {
+async function simulate(pulls, { comments = {}, reviews = {}, current = {}, fail = [] } = {}) {
   const posted = []
+  const failures = []
   const rest = {
     pulls: { list: () => pulls, listReviews: p => reviews[p.pull_number] ?? [], get: async p => ({ data: current[p.pull_number] ?? pulls.find(x => x.number === p.pull_number) }) },
-    issues: { listComments: p => comments[p.issue_number] ?? [], createComment: async p => { posted.push(p); comments[p.issue_number] = [{ user: { login: 'github-actions[bot]' }, body: p.body }] } }
+    issues: { listComments: p => comments[p.issue_number] ?? [], createComment: async p => { if (fail.includes(p.issue_number)) throw new Error('403'); posted.push(p); comments[p.issue_number] = [{ user: { login: 'github-actions[bot]' }, body: p.body }] } }
   }
   const github = { rest, paginate: async (fn, p) => fn(p) }
-  await run(github, { repo: { owner: 'prgrmrwy', repo: 'example' } }, { info() {} })
+  await run(github, { repo: { owner: 'prgrmrwy', repo: 'example' } }, { info() {}, warning() {}, setFailed(m) { failures.push(m) } })
+  posted.failures = failures
   return posted
 }
 test('hands off only external human, non-draft PRs older than four hours', async () => {
@@ -24,12 +26,20 @@ test('hands off only external human, non-draft PRs older than four hours', async
   assert.match(posts[0].body, /<!-- bebop:pr-review -->/)
   assert.match(posts[0].body, /@prgrmrwy/)
 })
-test('trusted marker, manual assignment and prior agent review suppress duplicates; forged marker does not', async () => {
+test('trusted marker and any maintainer/agent comment or review suppress handoff; forged marker does not', async () => {
   const comments = { 1: [{ user: { login: 'github-actions[bot]' }, body: '<!-- bebop:pr-review -->' }], 2: [{ user: { login: 'prgrmrwy' }, body: '@agent-bebop review' }], 3: [{ user: { login: 'agent-bebop' }, body: 'On it' }], 5: [{ user: { login: 'contributor' }, body: '<!-- bebop:pr-review -->' }], 6: [{ user: { login: 'prgrmrwy' }, body: 'Thanks for contributing' }] }
-  const reviews = { 4: [{ user: { login: 'agent-bebop' } }] }
-  const pulls = [1, 2, 3, 4, 5, 6].map(n => pr(n))
-  assert.deepEqual((await simulate(pulls, { comments, reviews })).map(p => p.issue_number), [5, 6])
+  const reviews = { 4: [{ user: { login: 'agent-bebop' } }], 7: [{ user: { login: 'prgrmrwy' } }] }
+  const pulls = [1, 2, 3, 4, 5, 6, 7].map(n => pr(n))
+  assert.deepEqual((await simulate(pulls, { comments, reviews })).map(p => p.issue_number), [5])
   assert.equal((await simulate(pulls, { comments, reviews })).length, 0)
+})
+test('a failed comment does not block later PRs but fails the run', async () => {
+  const posts = await simulate([pr(1), pr(2, { head: { sha: 'abc123' } })], { fail: [1] })
+  assert.deepEqual(posts.map(p => p.issue_number), [2])
+  assert.match(posts[0].body, /verify on the current head whether the problem it describes is real/)
+  assert.match(posts[0].body, /Do not state whether it should be merged/)
+  assert.match(posts[0].body, /Head: abc123/)
+  assert.deepEqual(posts.failures, ['1 handoff(s) failed'])
 })
 test('rechecks closed/draft PRs and caps each batch at five', async () => {
   const posts = await simulate(Array.from({ length: 9 }, (_, n) => pr(n + 1)), { current: { 1: pr(1, { state: 'closed' }), 2: pr(2, { draft: true }) } })
@@ -43,9 +53,11 @@ test('all deployment snapshots authorize the same marker and completion notifica
     assert.ok(rule.instruction.includes(settings.sources.github.config.repository))
     assert.match(rule.instruction, /<!-- bebop:pr-review -->/)
     assert.match(rule.instruction, /summary comment in the original PR mentioning @prgrmrwy/)
+    assert.match(rule.instruction, /verify on the current head whether the problem the PR describes is real/)
+    assert.match(rule.instruction, /do not state whether the PR should be merged/)
     assert.equal(settings.sources.github.config.observePulls, false)
   }
   assert.equal(workflow.on.schedule[0].cron, '37 * * * *')
-  assert.equal(workflow.permissions['pull-requests'], 'read')
+  assert.equal(workflow.permissions['pull-requests'], 'write')
   assert.equal(workflow.jobs.handoff.steps.length, 1)
 })

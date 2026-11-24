@@ -205,14 +205,16 @@ backfilled by adding this workflow.
 `settings/pr-review-handoff.yml` is the shared workflow deployed as
 `.github/workflows/pr-review-handoff.yml` in ohmydsh, dsh-magpie-connector and
  dsh-auto-model-routing. It scans hourly at minute 37 and hands external human PRs
- to Bebop once they are at least four hours old (plus scheduler delay). Existing
- eligible open PRs are included. Drafts, maintainer/agent/bot PRs, prior handoffs,
- explicit maintainer @agent-bebop assignments and PRs already handled or reviewed
- by Bebop are skipped. An ordinary maintainer reply does not suppress PR review.
+ to Bebop once they are at least four hours old (plus scheduler delay) with no
+ comment or review from the maintainer or Bebop. Existing eligible open PRs are
+ included. Drafts, maintainer/agent/bot PRs and prior handoffs are skipped. A
+ failed handoff does not block later PRs but fails the run.
 
 Each deployment's `external-pr-review` policy verifies the trusted Actions author,
  `<!-- bebop:pr-review -->` marker, repository, author, age and current PR state.
- Bebop reviews without modifying, approving or merging, then posts a summary in
+ Bebop first verifies whether the problem the PR describes is real, then reviews
+ the change quality without modifying, approving, merging or recommending a
+ merge, and posts a summary in
  the original PR mentioning @prgrmrwy and linking its review. Untrusted PR code
  must not be executed with credentials or privileged service access. Source-wide
  observation stays off so it cannot bypass the four-hour delay. No SA restart is
